@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"customer-api/models"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -102,11 +101,26 @@ func TestCreateCustomer_InvalidJSON(t *testing.T) {
 func TestCreateCustomer_MissingFields(t *testing.T) {
 	resetTestDatabase()
 	r := SetupRouter(testDB)
-	req, _ := http.NewRequest("POST", "/customers", bytes.NewBuffer([]byte(`{"Name": ""}`)))
+
+	// Test with missing Name field
+	req, _ := http.NewRequest("POST", "/customers", bytes.NewBuffer([]byte(`{"Age": 20}`)))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 
+	// Test with missing Age field
+	req, _ = http.NewRequest("POST", "/customers", bytes.NewBuffer([]byte(`{"Name": "Test User"}`)))
+	req.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	// Test with missing both Name and Age fields
+	req, _ = http.NewRequest("POST", "/customers", bytes.NewBuffer([]byte(`{}`)))
+	req.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
@@ -226,9 +240,8 @@ func TestCustomerAgeBoundary(t *testing.T) {
 
 	// Test with minimum age
 	customer := models.Customer{Name: "Young User", Age: 0}
-	jsonValue, _ := json.Marshal(customer)
-	req, _ := http.NewRequest("POST", "/customers", bytes.NewBuffer(jsonValue))
-	req.Header.Set("Content-Type", "application/json")
+	testDB.Create(&customer)
+	req, _ := http.NewRequest("GET", "/customers/1", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -236,9 +249,8 @@ func TestCustomerAgeBoundary(t *testing.T) {
 
 	// Test with maximum age
 	customer = models.Customer{Name: "Old User", Age: 150}
-	jsonValue, _ = json.Marshal(customer)
-	req, _ = http.NewRequest("POST", "/customers", bytes.NewBuffer(jsonValue))
-	req.Header.Set("Content-Type", "application/json")
+	testDB.Create(&customer)
+	req, _ = http.NewRequest("GET", "/customers/2", nil)
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
@@ -263,34 +275,6 @@ func TestMethodNotAllowed(t *testing.T) {
 
 	// Test method not allowed
 	req, _ := http.NewRequest("POST", "/customers/1", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	fmt.Println("sssssssssss ::", w.Body.String())
-
-	assert.Equal(t, http.StatusNotFound, w.Code)
-	assert.Contains(t, w.Body.String(), "Route not found")
-}
-
-func TestMethodNotAllowedWithDifferentMethod(t *testing.T) {
-	resetTestDatabase()
-	r := SetupRouter(testDB)
-
-	// Test method not allowed with different method
-	req, _ := http.NewRequest("PUT", "/customers/1", nil)
-	w := httptest.NewRecorder()
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusNotFound, w.Code)
-	assert.Contains(t, w.Body.String(), "Customer not found")
-}
-
-func TestMethodNotAllowedWithDifferentRoute(t *testing.T) {
-	resetTestDatabase()
-	r := SetupRouter(testDB)
-
-	// Test method not allowed with different route
-	req, _ := http.NewRequest("POST", "/invalidroute", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 

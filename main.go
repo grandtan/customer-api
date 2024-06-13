@@ -34,9 +34,9 @@ func createCustomer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if customer.Name == "" || customer.Age < 0 {
+	if customer.Name == "" || customer.Age <= 0 {
 		log.Println("Invalid customer data:", customer)
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid customer data"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Name and a positive Age are required"})
 		return
 	}
 	if err := DB.Create(&customer).Error; err != nil {
