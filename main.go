@@ -22,12 +22,12 @@ func initDatabase() {
 	handlers.InitDatabase(DB)
 }
 
-func setupRouter() *gin.Engine {
+func setupRouter(h handlers.CustomerHandler) *gin.Engine {
 	r := gin.Default()
-	r.POST("/customers", handlers.CreateCustomer)
-	r.PUT("/customers/:id", handlers.UpdateCustomer)
-	r.DELETE("/customers/:id", handlers.DeleteCustomer)
-	r.GET("/customers/:id", handlers.GetCustomer)
+	r.POST("/customers", h.CreateCustomer)
+	r.PUT("/customers/:id", h.UpdateCustomer)
+	r.DELETE("/customers/:id", h.DeleteCustomer)
+	r.GET("/customers/:id", h.GetCustomer)
 
 	// Handle method not allowed
 	r.NoMethod(func(c *gin.Context) {
@@ -44,6 +44,7 @@ func setupRouter() *gin.Engine {
 
 func main() {
 	initDatabase()
-	r := setupRouter()
+	h := handlers.NewHandler()
+	r := setupRouter(h)
 	r.Run()
 }

@@ -21,10 +21,10 @@ var testDB *gorm.DB
 func SetupRouter(db *gorm.DB) *gin.Engine {
 	handlers.InitDatabase(db)
 	r := gin.Default()
-	r.POST("/customers", handlers.CreateCustomer)
-	r.PUT("/customers/:id", handlers.UpdateCustomer)
-	r.DELETE("/customers/:id", handlers.DeleteCustomer)
-	r.GET("/customers/:id", handlers.GetCustomer)
+	r.POST("/customers", handlers.NewHandler().CreateCustomer)
+	r.PUT("/customers/:id", handlers.NewHandler().UpdateCustomer)
+	r.DELETE("/customers/:id", handlers.NewHandler().DeleteCustomer)
+	r.GET("/customers/:id", handlers.NewHandler().GetCustomer)
 
 	// Handle method not allowed
 	r.NoMethod(func(c *gin.Context) {
