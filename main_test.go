@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"customer-api/handlers"
 	"customer-api/models"
 	"encoding/json"
 	"net/http"
@@ -18,7 +19,24 @@ import (
 var testDB *gorm.DB
 
 func SetupRouter(db *gorm.DB) *gin.Engine {
-	return setupRouter(db)
+	handlers.InitDatabase(db)
+	r := gin.Default()
+	r.POST("/customers", handlers.CreateCustomer)
+	r.PUT("/customers/:id", handlers.UpdateCustomer)
+	r.DELETE("/customers/:id", handlers.DeleteCustomer)
+	r.GET("/customers/:id", handlers.GetCustomer)
+
+	// Handle method not allowed
+	r.NoMethod(func(c *gin.Context) {
+		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Method not allowed"})
+	})
+
+	// Handle route not found
+	r.NoRoute(func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Route not found"})
+	})
+
+	return r
 }
 
 func initTestDatabase() error {
