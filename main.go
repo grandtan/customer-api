@@ -34,6 +34,11 @@ func createCustomer(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if customer.Name == "" || customer.Age < 0 {
+		log.Println("Invalid customer data:", customer)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid customer data"})
+		return
+	}
 	if err := DB.Create(&customer).Error; err != nil {
 		log.Println("Error creating customer:", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -60,6 +65,11 @@ func updateCustomer(c *gin.Context) {
 	if err := c.ShouldBindJSON(&customer); err != nil {
 		log.Println("Error binding JSON:", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if customer.Name == "" || customer.Age < 0 {
+		log.Println("Invalid customer data:", customer)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid customer data"})
 		return
 	}
 	if err := DB.Save(&customer).Error; err != nil {
@@ -118,6 +128,17 @@ func setupRouter(db *gorm.DB) *gin.Engine {
 	r.PUT("/customers/:id", updateCustomer)
 	r.DELETE("/customers/:id", deleteCustomer)
 	r.GET("/customers/:id", getCustomer)
+
+	// Handle method not allowed
+	r.NoMethod(func(c *gin.Context) {
+		c.JSON(http.StatusMethodNotAllowed, gin.H{"error": "Method not allowed"})
+	})
+
+	// Handle route not found
+	r.NoRoute(func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Route not found"})
+	})
+
 	return r
 }
 

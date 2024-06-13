@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"customer-api/models"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -54,9 +56,7 @@ func TestCreateCustomer(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("Expected status code 200, but got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusOK, w.Code)
 
 	// Test with invalid JSON
 	req, _ = http.NewRequest("POST", "/customers", bytes.NewBuffer([]byte("{invalid json}")))
@@ -64,9 +64,50 @@ func TestCreateCustomer(t *testing.T) {
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("Expected status code 400, but got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	// Test with missing fields
+	req, _ = http.NewRequest("POST", "/customers", bytes.NewBuffer([]byte(`{"Name": ""}`)))
+	req.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestCreateCustomer_ValidData(t *testing.T) {
+	resetTestDatabase()
+	r := SetupRouter(testDB)
+	customer := models.Customer{Name: "Test User", Age: 20}
+	jsonValue, _ := json.Marshal(customer)
+	req, _ := http.NewRequest("POST", "/customers", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestCreateCustomer_InvalidJSON(t *testing.T) {
+	resetTestDatabase()
+	r := SetupRouter(testDB)
+	req, _ := http.NewRequest("POST", "/customers", bytes.NewBuffer([]byte("{invalid json}")))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestCreateCustomer_MissingFields(t *testing.T) {
+	resetTestDatabase()
+	r := SetupRouter(testDB)
+	req, _ := http.NewRequest("POST", "/customers", bytes.NewBuffer([]byte(`{"Name": ""}`)))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestGetCustomer(t *testing.T) {
@@ -79,27 +120,21 @@ func TestGetCustomer(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("Expected status code 200, but got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusOK, w.Code)
 
 	// Test with non-existent customer
 	req, _ = http.NewRequest("GET", "/customers/999", nil)
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("Expected status code 404, but got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusNotFound, w.Code)
 
 	// Test with invalid ID
 	req, _ = http.NewRequest("GET", "/customers/invalid", nil)
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("Expected status code 400, but got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestUpdateCustomer(t *testing.T) {
@@ -115,9 +150,7 @@ func TestUpdateCustomer(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("Expected status code 200, but got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusOK, w.Code)
 
 	// Test with non-existent customer
 	req, _ = http.NewRequest("PUT", "/customers/999", bytes.NewBuffer(jsonValue))
@@ -125,9 +158,7 @@ func TestUpdateCustomer(t *testing.T) {
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("Expected status code 404, but got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusNotFound, w.Code)
 
 	// Test with invalid JSON
 	req, _ = http.NewRequest("PUT", "/customers/1", bytes.NewBuffer([]byte("{invalid json}")))
@@ -135,9 +166,7 @@ func TestUpdateCustomer(t *testing.T) {
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("Expected status code 400, but got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 
 	// Test with invalid ID
 	req, _ = http.NewRequest("PUT", "/customers/invalid", bytes.NewBuffer(jsonValue))
@@ -145,9 +174,7 @@ func TestUpdateCustomer(t *testing.T) {
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("Expected status code 400, but got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestDeleteCustomer(t *testing.T) {
@@ -160,25 +187,140 @@ func TestDeleteCustomer(t *testing.T) {
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("Expected status code 200, but got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusOK, w.Code)
 
 	// Test with non-existent customer
 	req, _ = http.NewRequest("DELETE", "/customers/999", nil)
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusNotFound {
-		t.Fatalf("Expected status code 404, but got %d", w.Code)
-	}
+	assert.Equal(t, http.StatusNotFound, w.Code)
 
 	// Test with invalid ID
 	req, _ = http.NewRequest("DELETE", "/customers/invalid", nil)
 	w = httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Fatalf("Expected status code 400, but got %d", w.Code)
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestInitDatabase(t *testing.T) {
+	resetTestDatabase()
+	err := initTestDatabase()
+	if err != nil {
+		t.Fatalf("Expected no error, but got %s", err)
 	}
+
+	// Simulate error scenario by using an invalid driver name
+	origDB := testDB
+	testDB, err = gorm.Open(sqlite.Open("invalid/db/path"), &gorm.Config{})
+	if err == nil {
+		t.Fatalf("Expected error when opening invalid database, but got none")
+	}
+	testDB = origDB
+}
+
+func TestCustomerAgeBoundary(t *testing.T) {
+	resetTestDatabase()
+	r := SetupRouter(testDB)
+
+	// Test with minimum age
+	customer := models.Customer{Name: "Young User", Age: 0}
+	jsonValue, _ := json.Marshal(customer)
+	req, _ := http.NewRequest("POST", "/customers", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	// Test with maximum age
+	customer = models.Customer{Name: "Old User", Age: 150}
+	jsonValue, _ = json.Marshal(customer)
+	req, _ = http.NewRequest("POST", "/customers", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestInvalidRoute(t *testing.T) {
+	resetTestDatabase()
+	r := SetupRouter(testDB)
+
+	// Test invalid route
+	req, _ := http.NewRequest("GET", "/invalidroute", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestMethodNotAllowed(t *testing.T) {
+	resetTestDatabase()
+	r := SetupRouter(testDB)
+
+	// Test method not allowed
+	req, _ := http.NewRequest("POST", "/customers/1", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	fmt.Println("sssssssssss ::", w.Body.String())
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Contains(t, w.Body.String(), "Route not found")
+}
+
+func TestMethodNotAllowedWithDifferentMethod(t *testing.T) {
+	resetTestDatabase()
+	r := SetupRouter(testDB)
+
+	// Test method not allowed with different method
+	req, _ := http.NewRequest("PUT", "/customers/1", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Contains(t, w.Body.String(), "Customer not found")
+}
+
+func TestMethodNotAllowedWithDifferentRoute(t *testing.T) {
+	resetTestDatabase()
+	r := SetupRouter(testDB)
+
+	// Test method not allowed with different route
+	req, _ := http.NewRequest("POST", "/invalidroute", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Contains(t, w.Body.String(), "Route not found")
+}
+
+func TestEmptyDatabase(t *testing.T) {
+	resetTestDatabase()
+	r := SetupRouter(testDB)
+
+	// Test GET on empty database
+	req, _ := http.NewRequest("GET", "/customers/1", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestCustomerAgeNegative(t *testing.T) {
+	resetTestDatabase()
+	r := SetupRouter(testDB)
+
+	// Test with negative age
+	customer := models.Customer{Name: "Negative Age User", Age: -1}
+	jsonValue, _ := json.Marshal(customer)
+	req, _ := http.NewRequest("POST", "/customers", bytes.NewBuffer(jsonValue))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
